@@ -15,11 +15,12 @@ class AIService():
         self.r = redis.Redis.from_url(os.environ.get('REDIS_URL'))
         self.db = self.load_dict()
 
-    def save_dict(self, data):
-        self.r.set(self.db, json.dumps(data))
+    def save_dict(self):
+        self.r.set('db', json.dumps(self.db))
 
     def load_dict(self):
         value = self.r.get('db')
+        print('valie', value)
         return json.loads(value) if value else {}
  
     def perplexity_request(self, messages):
