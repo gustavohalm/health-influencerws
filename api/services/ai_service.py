@@ -1,8 +1,3 @@
-from flask import Flask
-#from services.ai_service import AIService
-import threading
-
-app = Flask(__name__)
 import requests
 import json
 import os 
@@ -284,29 +279,13 @@ class AIService():
     def keys(self):
         return list(db.keys())
         
-
-@app.route('/api/influencers', methods=['POST'])
-def generate_influencers():
+if __name__ == '__main__':
     ai_service = AIService()
-    threading.Thread(target=ai_service.find_influencers).start()
-    
-    return {}, 200
+    ai_service.find_influencers()
+  #  ai_service.find_influencer('Andrew Huberman')
+   # fjson = open('db.json', 'w')
+    #json.dump(db, fjson)
+    ai_service.find_influencer('Andrew Huberman')
+ #   ai_service.search_claims('Andrew Huberman')
+#    ai_service.search_claims('Andrew Huberm')
 
-@app.route('/api/influencers', methods=['GET'])
-def list_influencers():
-    ai_service = AIService()
-    return ai_service.list_influencers(), 200
-
-@app.route('/api/influencers/keys', methods=['GET'])
-def list_influencers_keys():
-    ai_service = AIService()
-    return ai_service.keys(), 200
-
-@app.route('/api/influencer/<name>', methods=['GET'])
-def get_influencer(name):
-    ai_service = AIService()
-    return ai_service.get_influencer(name), 200
-
-@app.route("/api/python")
-def hello_world():
-    return {'Hello': 'World'}, 200
