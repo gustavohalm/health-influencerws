@@ -1,9 +1,9 @@
 import requests
 import json
 import os 
+import redis
 #from llama_index.llms.openai import OpenAI
 #from llama_index.core import Document, VectorStoreIndex
-db = {}
 #f = open('db.json')
 #db = json.load(f)
 
@@ -12,7 +12,16 @@ class AIService():
     def __init__(self):
         self.url = "https://api.perplexity.ai/chat/completions"
         self.token = os.environ.get('PERPLEXITY_API_KEY') 
+        self.r = redis.Redis.from_url(os.environ.get('REDIS_URL'))
+        self.db = self.load_dict()
 
+    def save_dict(self, data):
+        self.r.set(self.db, json.dumps(data))
+
+    def load_dict(self):
+        value = self.r.get('db')
+        return json.loads(value) if value else {}
+ 
     def perplexity_request(self, messages):
         payload = {
             "model": "llama-3.1-sonar-huge-128k-online",
@@ -57,8 +66,8 @@ class AIService():
         description = response['choices'][0]['message']['content']
         print(name, description)
         name = name.strip()
-        if name not in db:
-            db[name] = {
+        if name not in self.db:
+            self.db[name] = {
                 'name': name,
                 'description': description,
                 'claims': []
@@ -67,8 +76,9 @@ class AIService():
             self.find_claims(name)
         except Exception as e:
             print(f'error finding claims for {name}', e)
+        self.save_dict()
 
-        return db[name]
+        return self.db[name]
     
     def find_influencers(self):
         messages = [
@@ -97,8 +107,8 @@ class AIService():
                 name, description = l.split('-', 1)
                 name = name.strip()
                 print(name, description)
-                if name not in db:
-                    db[name] = {
+                if name not in self.db:
+                    self.db[name] = {
                         'name': name,
                         'description': description,
                         'claims': []
@@ -107,6 +117,7 @@ class AIService():
                     self.find_claims(name)
                 except Exception as e:
                     print(f'erro finding claims for {name}', e)
+        self.save_dict()
 
     def find_claims(self, influencer):
         messages = [
@@ -144,13 +155,14 @@ class AIService():
                         'data': self.verify_claim(c['claim'])
 
                 }
-                if influencer in db:
-                    db[influencer]['claims'].append(claim)
+                if influencer in self.db:
+                    self.db[influencer]['claims'].append(claim)
                 else :
-                    db[influencer] = { 'claims': [claim]}
+                    self.db[influencer] = { 'claims': [claim]}
             except Exception as e:
                 print(f'Error on adding {influencer} claim {c}', e)
 
+        self.save_dict()
 
     def verify_claim(self, claim):
         messages = [
@@ -221,7 +233,7 @@ class AIService():
     
     def list_influencers(self):
         influencers = []
-        for key, value in db.items():
+        for key, value in self.db.items():
             name = value.get("name", "Unknown")
             claims = value.get("claims", [])
             
@@ -252,9 +264,9 @@ class AIService():
         return influencers
     
     def get_influencer(self, name):
-        if name not in db:
+        if name not in self.db:
             value = self.find_influencer(name)
-        value = db[name]
+        value = self.db[name]
         name = value.get("name", "Unknown")
         claims = value.get("claims", [])
         
@@ -277,7 +289,7 @@ class AIService():
         value['checked_claims']= checked_claims
         return value        
     def keys(self):
-        return list(db.keys())
+        return list(self.db.keys())
         
 if __name__ == '__main__':
     ai_service = AIService()
